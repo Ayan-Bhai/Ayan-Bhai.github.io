@@ -920,22 +920,27 @@
     body.innerHTML = '<div class="empty-note">Loading…</div>';
     api('/api/admin/settings').then(function (d) {
       if (guard(d)) return;
+      var emailOk = d.brevo_set || d.resend_set || (d.gmail_user && d.gmail_pass_set);
       body.innerHTML =
         '<div class="settings-card">' +
-          '<h3 class="form-title">Email Sending (Gmail)</h3>' +
-          '<p class="dim-note" style="margin-bottom:20px">The website uses this Gmail account to send verification codes, order confirmations and contact-form copies. Use a Gmail <strong>App Password</strong> (Google Account → Security → 2-Step Verification → App passwords).</p>' +
+          '<h3 class="form-title">Email Sending</h3>' +
+          '<p class="dim-note" style="margin-bottom:20px"><strong>Recommended: Brevo API key.</strong> Railway (Free/Trial/Hobby) blocks Gmail SMTP, so use an HTTPS provider: get a free key at <strong>brevo.com → Settings → SMTP &amp; API → API Keys</strong> (300 emails/day free), or <strong>resend.com → API Keys</strong>. Set the “Sender email” to the address verified with that provider. Gmail + App Password still works on hosts that allow SMTP.</p>' +
           '<form id="settings-form">' +
-            '<label class="field"><span>Gmail Address (sender)</span><input type="email" name="gmail_user" value="' + esc(d.gmail_user || '') + '" placeholder="yourshop@gmail.com" /></label>' +
-            '<label class="field"><span>App Password ' + (d.gmail_pass_set ? '(saved — leave blank to keep)' : '') + '</span><input name="gmail_pass" placeholder="xxxx xxxx xxxx xxxx" autocomplete="off" /></label>' +
+            '<label class="field"><span>Sender Email (from address)</span><input type="email" name="mail_from" value="' + esc(d.mail_from || d.gmail_user || '') + '" placeholder="yourshop@gmail.com" /></label>' +
+            '<label class="field"><span>Brevo API Key ' + (d.brevo_set ? '(saved — leave blank to keep)' : '— recommended for Railway') + '</span><input name="brevo_key" placeholder="xkeysib-..." autocomplete="off" /></label>' +
+            '<label class="field"><span>Resend API Key ' + (d.resend_set ? '(saved — leave blank to keep)' : '(optional alternative)') + '</span><input name="resend_key" placeholder="re_..." autocomplete="off" /></label>' +
+            '<label class="field"><span>Gmail Address (SMTP fallback)</span><input type="email" name="gmail_user" value="' + esc(d.gmail_user || '') + '" placeholder="yourshop@gmail.com" /></label>' +
+            '<label class="field"><span>Gmail App Password ' + (d.gmail_pass_set ? '(saved — leave blank to keep)' : '') + '</span><input name="gmail_pass" placeholder="xxxx xxxx xxxx xxxx" autocomplete="off" /></label>' +
             '<div class="modal-actions" style="justify-content:flex-start">' +
               '<button type="submit" class="btn btn-solid btn-sm">Save Settings</button>' +
               '<button type="button" class="btn btn-outline btn-sm" id="test-email-btn">Send Test Email</button>' +
             '</div>' +
           '</form>' +
           '<div class="setting-status">' +
-            '<span class="status-pill ' + (d.gmail_user && d.gmail_pass_set ? 's-confirmed' : 's-pending') + '">' +
-              (d.gmail_user && d.gmail_pass_set ? 'Email configured' : 'Email not fully configured') + '</span>' +
-            (!d.gmail_user ? '<span class="dim-note"> — add the Gmail address to start sending real emails. Until then, signup codes are shown on-screen.</span>' : '') +
+            '<span class="status-pill ' + (emailOk ? 's-confirmed' : 's-pending') + '">' +
+              (emailOk ? 'Email configured' : 'Email not fully configured') + '</span>' +
+            (!emailOk ? '<span class="dim-note"> — add a Brevo/Resend API key (works on Railway) or Gmail + App Password to start sending real emails.</span>' : '') +
+            (d.gmail_user && d.gmail_pass_set && !d.brevo_set && !d.resend_set ? '<span class="dim-note"> ⚠ Gmail SMTP is blocked on Railway free plans — if emails fail, add a Brevo API key.</span>' : '') +
           '</div>' +
         '</div>' +
         '<div class="settings-card">' +
@@ -957,7 +962,7 @@
       $('#settings-form').addEventListener('submit', function (e) {
         e.preventDefault();
         var f = e.target;
-        api('/api/admin/settings', { method: 'PUT', body: { gmail_user: f.gmail_user.value, gmail_pass: f.gmail_pass.value } })
+        api('/api/admin/settings', { method: 'PUT', body: { mail_from: f.mail_from.value, brevo_key: f.brevo_key.value, resend_key: f.resend_key.value, gmail_user: f.gmail_user.value, gmail_pass: f.gmail_pass.value } })
           .then(function (d2) {
             if (d2.ok) { toast('Settings saved'); views.settings(); }
             else toast(d2.error || 'Failed', true);

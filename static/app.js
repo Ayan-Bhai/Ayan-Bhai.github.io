@@ -493,6 +493,10 @@
       api('/api/auth/forgot', { method: 'POST', body: { email: resetEmail } }).then(function (d) {
         btn.disabled = false; btn.innerHTML = 'Send Reset Code ' + ic('arrow');
         if (!d.ok) { err.textContent = d.error || 'Failed.'; return; }
+        if (!d.emailSent && !d.devCode) {
+          err.textContent = 'We could not send the reset email right now. Please try again in a minute.';
+          return;
+        }
         show('reset-card');
         if (d.devCode) {
           $('#reset-sub').innerHTML = 'Email sending is not configured on this preview — your code is: <strong style="font-size:1.2rem;letter-spacing:.2em">' + d.devCode + '</strong>';
@@ -560,12 +564,15 @@
         .then(function (d) {
           btn.disabled = false; btn.innerHTML = 'Send Verification Code ' + ic('arrow');
           if (!d.ok) { err.textContent = d.error || 'Signup failed.'; return; }
+          if (!d.emailSent && !d.devCode) {
+            // Email sending failed on the server — keep the user on the form so they can retry.
+            err.textContent = 'We could not send the verification email right now. Please try again in a minute, or contact support if it keeps failing.';
+            return;
+          }
           $('#signup-step1').style.display = 'none';
           $('#signup-step2').style.display = 'block';
           if (d.devCode) {
             $('#code-sub').innerHTML = 'Email sending is not configured on this preview — your code is: <strong style="font-size:1.2rem;letter-spacing:.2em">' + d.devCode + '</strong>';
-          } else if (!d.emailSent) {
-            $('#code-sub').textContent = 'We could not send the email right now. Please try again in a minute.';
           }
         });
     });
