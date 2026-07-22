@@ -398,6 +398,7 @@
       }
 
       body.innerHTML =
+        '<div class="admin-actions" style="margin-bottom:14px"><button class="btn btn-solid btn-sm" id="add-user-btn">' + ic('plus') + ' Add User</button></div>' +
         (iAmOwner
           ? '<div class="admin-hint" style="margin-bottom:18px">You are the <strong>owner</strong> — you can promote users to admin, demote admins, or transfer ownership. Admins can manage the shop but cannot change roles.</div>'
           : '<div class="admin-hint" style="margin-bottom:18px">Only the <strong>owner</strong> can change user roles.</div>') +
@@ -411,6 +412,52 @@
             '<td>' + esc(String(x.created_at).slice(0, 10)) + '</td>' +
             '<td style="text-align:right">' + (canDelete(x) ? '<button class="icon-btn del-btn">' + ic('trash') + '</button>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>';
+
+      function addUserForm() {
+        openModal(
+          '<h3 class="form-title">Add User</h3>' +
+          '<p class="dim-note" style="margin-bottom:16px">The account is created already-verified — no email code needed. Optionally send the login details to the user by email.</p>' +
+          '<form id="add-user-form">' +
+            '<label class="field"><span>Full Name</span><input required name="name" maxlength="60" placeholder="John Doe" /></label>' +
+            '<label class="field"><span>Email</span><input required type="email" name="email" placeholder="user@example.com" /></label>' +
+            '<div class="field-row">' +
+              '<label class="field"><span>Password (min 6 chars)</span><input required name="password" minlength="6" autocomplete="new-password" placeholder="••••••" /></label>' +
+              '<label class="field"><span>Role</span><select name="role">' +
+                '<option value="customer" selected>user</option>' +
+                (iAmOwner ? '<option value="admin">admin</option>' : '') +
+              '</select></label>' +
+            '</div>' +
+            '<div class="check-row">' +
+              '<label><input type="checkbox" name="send_email" checked /> Email the login details to the user</label>' +
+            '</div>' +
+            '<div class="form-error" id="add-user-error"></div>' +
+            '<div class="modal-actions">' +
+              '<button type="button" class="btn btn-outline btn-sm" id="modal-cancel">Cancel</button>' +
+              '<button type="submit" class="btn btn-solid btn-sm" id="add-user-submit">Create User</button>' +
+            '</div>' +
+          '</form>'
+        );
+        $('#modal-cancel').addEventListener('click', closeModal);
+        $('#add-user-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var f = e.target, btn = $('#add-user-submit'), err = $('#add-user-error');
+          err.textContent = ''; btn.disabled = true; btn.textContent = 'Creating…';
+          api('/api/admin/users', {
+            method: 'POST',
+            body: {
+              name: f.name.value, email: f.email.value, password: f.password.value,
+              role: f.role.value, send_email: f.send_email.checked
+            }
+          }).then(function (d2) {
+            btn.disabled = false; btn.textContent = 'Create User';
+            if (!d2.ok) { err.textContent = d2.error || 'Failed to create user.'; return; }
+            closeModal();
+            toast('User created' + (f.send_email.checked ? (d2.emailSent ? ' — login details emailed' : ' — but the email could not be sent') : ''), f.send_email.checked && !d2.emailSent);
+            views.users();
+          });
+        });
+      }
+      $('#add-user-btn').addEventListener('click', addUserForm);
 
       body.onchange = function (e) {
         var s = e.target.closest('.role-select'); if (!s) return;
