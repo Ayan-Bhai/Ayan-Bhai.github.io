@@ -522,7 +522,7 @@
     });
   }
 
-  /* ================= SIGNUP (2-step with email code) ================= */
+  /* ================= SIGNUP (instant — no email verification) ================= */
   function signupPage() {
     var inner =
       '<section class="auth-wrap">' +
@@ -534,18 +534,9 @@
             '<label class="field"><span>Email</span><input required type="email" name="email" autocomplete="email" /></label>' +
             '<label class="field"><span>Password (min 6 chars)</span><div class="pass-wrap"><input required type="password" name="password" minlength="6" id="pass-input" autocomplete="new-password" /><button type="button" class="pass-eye" id="pass-eye">' + ic('eye') + '</button></div></label>' +
             '<div class="form-error" id="form-error"></div>' +
-            '<button class="btn btn-solid" type="submit" style="width:100%" id="submit-btn">Send Verification Code ' + ic('arrow') + '</button>' +
+            '<button class="btn btn-solid" type="submit" style="width:100%" id="submit-btn">Create Account ' + ic('arrow') + '</button>' +
           '</form>' +
           '<p class="auth-alt">Already have an account? <a href="login.html">Log in</a></p>' +
-        '</div>' +
-        '<div class="auth-card reveal in" id="signup-step2" style="display:none">' +
-          '<h1 class="auth-title">Check Your Email</h1>' +
-          '<p class="auth-sub" id="code-sub">We sent a 6-digit code to your email. Enter it below to activate your account.</p>' +
-          '<form id="verify-form">' +
-            '<label class="field"><span>6-Digit Code</span><input required name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="code-input" placeholder="000000" /></label>' +
-            '<div class="form-error" id="verify-error"></div>' +
-            '<button class="btn btn-solid" type="submit" style="width:100%" id="verify-btn">Verify &amp; Log In ' + ic('check') + '</button>' +
-          '</form>' +
         '</div>' +
       '</section>';
     page(inner, '');
@@ -554,43 +545,24 @@
       var i = $('#pass-input'); i.type = i.type === 'password' ? 'text' : 'password';
     });
 
-    var pendingEmail = '';
     $('#signup-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var f = e.target, btn = $('#submit-btn'), err = $('#form-error');
-      err.textContent = ''; btn.disabled = true; btn.textContent = 'Sending code…';
-      pendingEmail = f.email.value.trim();
-      api('/api/auth/signup', { method: 'POST', body: { name: f.name.value, email: pendingEmail, password: f.password.value } })
+      err.textContent = ''; btn.disabled = true; btn.textContent = 'Creating account…';
+      api('/api/auth/signup', { method: 'POST', body: { name: f.name.value, email: f.email.value.trim(), password: f.password.value } })
         .then(function (d) {
-          btn.disabled = false; btn.innerHTML = 'Send Verification Code ' + ic('arrow');
-          if (!d.ok) { err.textContent = d.error || 'Signup failed.'; return; }
-          if (!d.emailSent && !d.devCode) {
-            // Email sending failed on the server — keep the user on the form so they can retry.
-            err.textContent = 'We could not send the verification email right now. Please try again in a minute, or contact support if it keeps failing.';
-            return;
-          }
-          $('#signup-step1').style.display = 'none';
-          $('#signup-step2').style.display = 'block';
-          if (d.devCode) {
-            $('#code-sub').innerHTML = 'Email sending is not configured on this preview — your code is: <strong style="font-size:1.2rem;letter-spacing:.2em">' + d.devCode + '</strong>';
-          }
-        });
-    });
-
-    $('#verify-form').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var f = e.target, btn = $('#verify-btn'), err = $('#verify-error');
-      err.textContent = ''; btn.disabled = true; btn.textContent = 'Verifying…';
-      api('/api/auth/verify', { method: 'POST', body: { email: pendingEmail, code: f.code.value } })
-        .then(function (d) {
-          if (d.ok) {
+          if (d.ok && d.token) {
             setAuth(d.token, d.user);
             toast('Account created! Welcome, ' + d.user.name);
             setTimeout(function () { location.href = 'account.html'; }, 700);
           } else {
-            err.textContent = d.error || 'Verification failed.';
-            btn.disabled = false; btn.innerHTML = 'Verify & Log In ' + ic('check');
+            err.textContent = d.error || 'Signup failed.';
+            btn.disabled = false; btn.innerHTML = 'Create Account ' + ic('arrow');
           }
+        })
+        .catch(function () {
+          err.textContent = 'Could not reach the server. Please try again.';
+          btn.disabled = false; btn.innerHTML = 'Create Account ' + ic('arrow');
         });
     });
   }
