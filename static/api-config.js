@@ -6,4 +6,4 @@
 
    For local development keep localhost.
    ============================================================ */
-window.API_BASE = 'tech-nova-backend-production.up.railway.app/api';
+window.API_BASE = 'tech-nova-backend-production.up.railway.app';
