@@ -6,4 +6,4 @@
 
    For local development keep localhost.
    ============================================================ */
-window.API_BASE = 'http://localhost:8080';
+window.API_BASE = 'http://tech-nova-backend-production.up.railway.app';
